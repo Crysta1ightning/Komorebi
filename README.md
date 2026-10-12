@@ -1,65 +1,223 @@
 # Komorebi（木漏れ日）
 
-日文影片學習與單字 flashcards，使用 React、Vite 和本地 JMdict。
-手機版為可加入 iPhone 主畫面的 PWA，可透過 Supabase 同步收藏、例句與學習進度。
+A Japanese learning app with video subtitles, dictionary lookups, and flashcards.
+Built with React and Vite. The mobile PWA can sync vocabulary and learning
+progress with the desktop app through your own Supabase project.
 
-## 開始使用
+The interface currently uses Traditional Chinese labels, Japanese vocabulary,
+and English definitions and sentence translations.
 
-需要 Node.js 22。下載原始碼後：
+## 1. Install and start the app
+
+Install **Node.js 22** and Git, then run:
 
 ```bash
+git clone https://github.com/Crysta1ightning/Komorebi.git
+cd Komorebi
 npm ci
 cp .env.example .env
+npm run dev
 ```
 
-`npm ci` 會初始化空的影片收藏，不會覆蓋已匯入的本地影片。
-單字庫保存在瀏覽器；登入雲端帳號或還原 JSON 備份可取得原收藏。
+On Windows PowerShell, use `Copy-Item .env.example .env` instead of `cp`.
+Create `.env` once; when updating, edit the existing file rather than replacing it.
 
-若需要雲端同步，在 `.env` 加入 `.env.mobile.example` 示範的兩個
-`VITE_SUPABASE_` 公開設定，並依 [手機與部署教學](MOBILE_SETUP.md)
-在 Supabase 建立資料表及登入帳號。Gemini／Groq 私鑰只供本地 pipeline 使用。
+Open the URL printed by Vite, normally `http://127.0.0.1:5173`.
+Keep the terminal running; press Ctrl+C to stop the app.
+
+**You can use flashcards without any API keys.** A fresh clone starts with an
+empty video collection and opens the vocabulary review interface. The bundled
+JMdict dictionary is ready for word lookups. Installation creates the empty
+video index without overwriting previously imported videos.
+
+For the dedicated phone layout, stop that server and run:
 
 ```bash
-npm run dev
 npm run dev:mobile
 ```
 
-沒有影片時，主程式會顯示單字複習介面。匯入影片後提供影片收藏與字幕學習。
+Open the URL printed by Vite. To preview on a phone on the same Wi-Fi, use your
+computer's LAN IP and the displayed port. Use HTTPS hosting for installation
+and offline caching; see the deployment instructions below.
 
-## 功能
+## 2. Configure your own `.env`
 
-- YouTube 播放、本地音訊播放、字幕定位、循環播放與速度調整。
-- 日文字幕附英文句子翻譯，點詞自動收藏，可取消星號。
-- JMdict 解釋與日英例句，多音字可選擇要學的讀音。
-- 手動新增單字、自訂及上傳例句，裝置日文朗讀。
-- 按數量選擇熟悉度最低的單字；新收藏不會自動加入練習清單。
-- 不熟悉插入後 10 張，普通插入後 20 張，熟悉今天完成。
-- 熟悉度考慮當天評分歷程及距上次練習的時間。
-- 本地 JSON 備份、跨裝置雲端合併、離線複習。
+The root `.env` file is ignored by Git. Use your own credentials, not another
+user's keys. Configuration depends on which features you want:
 
-## 匯入影片
+| Feature | Required settings |
+| --- | --- |
+| Local flashcards, dictionary, custom examples, JSON backups | None |
+| Sync between desktop and phone | Supabase project URL and publishable key |
+| Import videos and generate subtitles/English translations | Gemini **or** Groq API key; Python and the full dictionary input |
 
-影片處理需要 Python 3.12、本地 Whisper 模型、完整 JMdict 輸入檔及翻譯 API key。
-依 [PIPELINE.md](PIPELINE.md) 設定後執行：
+### Optional cloud sync
+
+Create your own Supabase project, run the complete
+[`supabase/study-sync.sql`](supabase/study-sync.sql) in its SQL Editor, and create
+an email/password user in **Authentication → Users**, with email confirmed.
+Add your project's public settings to `.env`:
+
+```dotenv
+VITE_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=YOUR_PUBLISHABLE_KEY
+```
+
+Use a **publishable key**, not a secret or `service_role` key. These two `VITE_`
+values are visible in the browser; database access is protected by authentication,
+RLS, and the sync function. Do not add `VITE_` to a private API key.
+
+Restart the development server after editing `.env`. Open **雲端同步** and sign
+in with the app user you created. This is separate from your Supabase Dashboard
+login. Sign in to the same app account on desktop and phone.
+
+The app stores one JSON library per user in `public.study_libraries`; individual
+words are inside `document.cards`. No video or audio files are uploaded to
+Supabase. For SQL, account setup, and troubleshooting, see
+[MOBILE_SETUP.md](MOBILE_SETUP.md).
+
+### Optional video-processing API key
+
+For Gemini, edit these lines in `.env`:
+
+```dotenv
+SUBTITLE_PROVIDER=gemini
+GEMINI_API_KEY=YOUR_GEMINI_API_KEY
+JMDICT_PATH=.dictionary/jmdict-eng.json
+```
+
+Or use Groq:
+
+```dotenv
+SUBTITLE_PROVIDER=groq
+GROQ_API_KEY=YOUR_GROQ_API_KEY
+JMDICT_PATH=.dictionary/jmdict-eng.json
+```
+
+Only the selected provider needs a key. Optional `SUBTITLE_JUDGE_MODEL` overrides
+the model used by that provider. The Python pipeline reads `.env` when started;
+shell environment variables take precedence. Private keys stay in the local
+pipeline and are not included in the app build. Provider quotas and billing
+depend on your own account. Playback and review do not make these API calls.
+
+## 3. Add words and review
+
+1. Open **收藏** in the phone menu, or **單字複習 → 單字收藏** on desktop.
+2. Expand **自己新增單字**, enter Japanese, and press **查字典**. Select a
+   dictionary entry, or provide your own reading and meaning.
+3. Optionally add Japanese examples with English translations, then save the word.
+4. Open **複習**, enter how many words to practice, and add them to the playlist.
+   The app selects the lowest familiarity scores first. Newly saved words stay
+   in the collection until you explicitly add them to practice.
+5. Think of the meaning and reading, flip the card, and choose a rating:
+
+| Rating | Behavior |
+| --- | --- |
+| 不熟悉 — unfamiliar | Returns after 10 other cards, or at the end of a shorter queue |
+| 普通 — ordinary | Returns after 20 other cards, or at the end of a shorter queue |
+| 熟悉 — familiar | Finished for the current local calendar day |
+
+The mobile **＋** next to the remaining count lets you add more words without
+leaving the current card. Words already queued or completed today are excluded.
+Familiarity considers repeated attempts and decays with time; history is retained.
+
+Click a saved word to open its dictionary dialog. For multiple readings, choose
+**收藏此讀音** to update that card's reading and meanings without losing history.
+Japanese pronunciation uses your device's speech voices. You can add or upload
+custom examples; see [STUDY_DICTIONARY.md](STUDY_DICTIONARY.md) for file formats.
+
+Collections are stored in your browser. Use **下載備份** to export JSON and
+**還原備份** to import it. Without cloud sync, different browsers, hosts, and ports
+have separate collections. With sync, restoring a backup merges it into the
+cloud library. Cancel a star to remove a word from study.
+
+## 4. Import a YouTube video
+
+Video processing runs on your computer. Install **Python 3.12**, then create the
+environment expected by the pipeline:
+
+```bash
+python3.12 -m venv .venv-asr
+.venv-asr/bin/python -m pip install -r scripts/asr-requirements.txt
+mkdir -p .dictionary
+```
+
+On Windows PowerShell:
+
+```powershell
+py -3.12 -m venv .venv-asr
+.venv-asr\Scripts\python.exe -m pip install -r scripts/asr-requirements.txt
+New-Item -ItemType Directory -Force .dictionary
+```
+
+Download the **full English JMdict JSON** from the jmdict-simplified releases
+listed in [PIPELINE.md](PIPELINE.md), unpack it, and place it at
+`.dictionary/jmdict-eng.json`. The bundled browser dictionary shards are for
+lookups; the pipeline needs this separate full input file.
+
+Configure a provider key as described above, then run:
 
 ```bash
 npm run transcribe -- "https://youtu.be/VIDEO_ID"
 ```
 
-優先使用作者上傳的日文字幕；自動字幕或沒有字幕時使用獨立 ASR 與語言模型比對。
-英文翻譯與字典資料完成後，影片才會加入收藏。處理結果保存在本機 `artifacts/`。
+Replace `VIDEO_ID` with a real video ID or paste a full YouTube link.
 
-## 手機部署
+- Uploaded Japanese subtitles are used directly, preserving author timings and
+  wording and skipping ASR and Japanese correction.
+- With only automatic captions or no Japanese captions, the pipeline runs
+  **large-v3-turbo locally on CPU**, then compares wording with the configured
+  language model. The first ASR run downloads the model to `.asr-models/`.
+- It generates English translations and vocabulary, then adds the completed
+  lesson to **影片收藏**. Refresh the app to see it.
+
+Click a subtitle word to automatically save it; remove an accidental star in
+the popup. Click a passage to replay it. You can switch between embedded YouTube
+playback and the locally downloaded audio.
+
+Output stays in `artifacts/<video-id>/`. Rerun the same command after a temporary
+failure to reuse completed checkpoints. To regenerate only English translations:
+
+```bash
+npm run translate -- VIDEO_ID
+```
+
+See [PIPELINE.md](PIPELINE.md) for model settings, caching, and output files.
+
+## 5. Build or host the app
+
+Desktop production build:
+
+```bash
+npm run build
+npm run preview
+```
+
+Phone PWA package (requires Python 3 for ZIP creation):
 
 ```bash
 npm run package:mobile
 ```
 
-上傳 `artifacts/mobile/komorebi-mobile.zip` 到 Cloudflare Pages，再用 Safari
-開啟網址並加入主畫面。詳細步驟見 [MOBILE_SETUP.md](MOBILE_SETUP.md)。
-手机版不包含影片、模型或本地 pipeline 私鑰。
+Upload **`artifacts/mobile/komorebi-mobile.zip`** to Cloudflare Pages using
+Direct Upload. Open the deployed HTTPS URL in iPhone Safari, add it to the home
+screen, then sign in to your sync account. The mobile package contains review,
+dictionary, and sync features; it does not contain videos, ASR models, or private
+pipeline keys. Follow [MOBILE_SETUP.md](MOBILE_SETUP.md) for the complete walkthrough.
 
-## 驗證
+If Windows has `py` but no `python3` command, package it with:
+
+```powershell
+npm run build:mobile
+py -3 scripts/package-mobile.py
+```
+
+`.env` settings are embedded **at build time**. After changing Supabase settings,
+rebuild and redeploy; changing Cloudflare's environment variables does not modify
+a ZIP already built on your computer. For subsequent releases, upload a new ZIP
+to the same Pages project.
+
+## Development checks
 
 ```bash
 npm test
@@ -69,18 +227,21 @@ npm run package:mobile
 npm run test:mobile-build
 ```
 
-純邏輯、手機介面、模擬雲端及 PostgreSQL 權限測試可在新 clone 執行。
-依賴原本本地影片的整合測試會在素材未匯入時明確跳過。
+`test:pipeline` requires Python 3. Tests use mock providers rather than live API
+calls. Tests for the original local video fixtures are explicitly skipped in a
+fresh clone; logic, mobile UI, mock sync, and SQL permission tests still run.
 
-## 原始碼與資料
+## Data and attribution
 
-Repository 保留程式碼、SQL、設定範本、文件，以及有授權標示的公開字典分片。
-以下檔案留在本機：`.env`、下載音訊／字幕、生成的影片索引、模型、Python runtime、
-部署 ZIP、建置目錄及個人資料。換電腦時需重新匯入影片或自行搬移本地素材，
-收藏則從 Supabase 或 JSON 備份取得。
+This repository includes source code, SQL, configuration templates, documentation,
+and the licensed browser dictionary shards. It excludes `.env`, downloaded audio
+and subtitles, generated video indexes, models, Python environments, deployment
+ZIPs, and builds. On another computer, import videos again or transfer their local
+files and generated indexes; restore vocabulary from Supabase or a JSON backup.
 
-JMdict 資料由 EDRDG 提供，採 CC BY-SA 4.0；字典例句來自 Tatoeba contributors，
-採 CC BY 2.0。詳見 [DICTIONARY-SOURCES.md](DICTIONARY-SOURCES.md)。
+JMdict is provided by EDRDG under CC BY-SA 4.0. Dictionary examples are from
+Tatoeba contributors under CC BY 2.0. See [DICTIONARY-SOURCES.md](DICTIONARY-SOURCES.md).
 
-其他說明：[複習演算法](REVIEW_ALGORITHM.md)、[單字與例句](STUDY_DICTIONARY.md)、
-[未來改善](FUTURE_IMPROVEMENTS.md)。
+Further reading: [review algorithm](REVIEW_ALGORITHM.md),
+[custom words and examples](STUDY_DICTIONARY.md),
+[future improvements](FUTURE_IMPROVEMENTS.md).
