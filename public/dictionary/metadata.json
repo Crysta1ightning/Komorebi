@@ -1,0 +1,10 @@
+{
+  "source": "JMdict with examples (EDRDG), via jmdict-simplified",
+  "date": "2026-10-05",
+  "words": 218863,
+  "withExamples": 28928,
+  "dictionaryLicense": "CC BY-SA 4.0",
+  "examplesSource": "Tatoeba",
+  "examplesLicense": "CC BY 2.0",
+  "upstream": "https://github.com/scriptin/jmdict-simplified"
+}

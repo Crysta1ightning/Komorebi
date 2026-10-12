@@ -1,0 +1,36 @@
+{
+  "name": "kiku-personal-player",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "prepare": "node scripts/prepare-workspace.mjs",
+    "dev": "vite --host 127.0.0.1",
+    "build": "vite build",
+    "dev:mobile": "vite --config vite.mobile.config.mjs --host 0.0.0.0",
+    "build:mobile": "vite build --config vite.mobile.config.mjs && node scripts/build-mobile-worker.mjs",
+    "preview:mobile": "vite preview --config vite.mobile.config.mjs --host 0.0.0.0",
+    "test:mobile-build": "node scripts/test-mobile-build.mjs",
+    "package:mobile": "npm run build:mobile && python3 scripts/package-mobile.py",
+    "preview": "vite preview --host 127.0.0.1",
+    "test": "node --test src/*.test.mjs && node scripts/test-word-ui.mjs && node scripts/test-mobile-ui.mjs && node scripts/test-cloud-ui.mjs && node scripts/test-sync-sql.mjs",
+    "vocabulary": "node scripts/build-vocabulary.mjs",
+    "dictionary": "node scripts/build-study-dictionary.mjs",
+    "download": "node scripts/pipeline.mjs download",
+    "transcribe": "node scripts/pipeline.mjs transcribe",
+    "translate": "node scripts/pipeline.mjs translate",
+    "test:pipeline": "python3 -m unittest discover -s scripts -p 'test_pipeline.py'"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.117.3",
+    "kuromoji": "^0.1.2",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "ts-fsrs": "^5.4.2"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
+    "happy-dom": "^20.14.6",
+    "vite": "^7.1.0"
+  }
+}
